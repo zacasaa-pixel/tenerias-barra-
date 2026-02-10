@@ -1,0 +1,205 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Tenerías - Logística Almacén</title>
+    <style>
+        :root {
+            --gold: #c5a059;
+            --dark: #000000;
+            --gray-card: #121212;
+            --border: #2a2a2a;
+        }
+
+        body {
+            font-family: 'Garamond', serif;
+            background-color: var(--dark);
+            color: #f1f1f1;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 1px solid var(--gold);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            letter-spacing: 8px;
+            font-weight: 300;
+            margin: 0;
+            color: white;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 25px;
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .card {
+            background: var(--gray-card);
+            padding: 30px;
+            border: 1px solid var(--border);
+            border-top: 3px solid var(--gold);
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--gold);
+            margin-top: 0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #888; }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: white;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: var(--gold);
+            color: black;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: 0.3s;
+        }
+
+        button:hover { background: #e2bd75; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th { border-bottom: 1px solid var(--gold); padding: 12px; text-align: left; color: var(--gold); }
+        td { padding: 12px; border-bottom: 1px solid #222; }
+
+        .stock-final { color: var(--gold); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>TENERÍAS</h1>
+    <p>LOGÍSTICA DE ALMACÉN | MONTERREY N.L.</p>
+</div>
+
+<div class="grid">
+    <div class="card">
+        <h2>Registro de Movimiento</h2>
+        <div class="form-group">
+            <label>Producto</label>
+            <input type="text" id="prod" placeholder="Ej. Tequila Maestro Dobel">
+        </div>
+        <div class="form-group">
+            <label>Cantidad (Botellas/Unidades)</label>
+            <input type="number" id="cant" placeholder="0">
+        </div>
+        <div class="form-group">
+            <label>Acción</label>
+            <select id="accion" style="width:100%; padding:12px; background:#1a1a1a; color:white; border:1px solid #333;">
+                <option value="entrada">Entra al Almacén (+)</option>
+                <option value="salida">Sale a Barra (-)</option>
+            </select>
+        </div>
+        <button onclick="registrar()">Registrar Movimiento</button>
+    </div>
+
+    <div class="card">
+        <h2>Inventario al Cierre del Día</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Entradas</th>
+                    <th>Salidas</th>
+                    <th>Stock Final</th>
+                </tr>
+            </thead>
+            <tbody id="tablaBody">
+                </tbody>
+        </table>
+        <br>
+        <button style="background:transparent; border:1px solid var(--gold); color:var(--gold);" onclick="exportarCSV()">
+            Corte Mensual (Excel)
+        </button>
+    </div>
+</div>
+
+<script>
+    let inventario = {};
+
+    function registrar() {
+        const prod = document.getElementById('prod').value.toUpperCase();
+        const cant = parseInt(document.getElementById('cant').value);
+        const accion = document.getElementById('accion').value;
+
+        if(!prod || !cant) return alert("Complete los datos");
+
+        if(!inventario[prod]) {
+            inventario[prod] = { entradas: 0, salidas: 0 };
+        }
+
+        if(accion === 'entrada') inventario[prod].entradas += cant;
+        else inventario[prod].salidas += cant;
+
+        renderTabla();
+        document.getElementById('prod').value = "";
+        document.getElementById('cant').value = "";
+    }
+
+    function renderTabla() {
+        const body = document.getElementById('tablaBody');
+        body.innerHTML = "";
+        
+        for (let p in inventario) {
+            let total = inventario[p].entradas - inventario[p].salidas;
+            body.innerHTML += `
+                <tr>
+                    <td>${p}</td>
+                    <td>${inventario[p].entradas}</td>
+                    <td>${inventario[p].salidas}</td>
+                    <td class="stock-final">${total}</td>
+                </tr>
+            `;
+        }
+    }
+
+    function exportarCSV() {
+        let csv = "Producto,Entradas,Salidas,Stock Final\n";
+        for (let p in inventario) {
+            let total = inventario[p].entradas - inventario[p].salidas;
+            csv += ${p},${inventario[p].entradas},${inventario[p].salidas},${total}\n;
+        }
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('href', url);
+        a.setAttribute('download', 'Cierre_Almacen_Tenerias.csv');
+        a.click();
+    }
+</script>
+
+</body>
+</html>
