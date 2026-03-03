@@ -1,8 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tenerías - Logística Almacén</title>
     <style>
         :root {
@@ -36,10 +36,18 @@
 
         .grid {
             display: grid;
-            grid-template-columns: 1fr 1.5fr;
+            /* Cambiado a 1 columna por defecto (móvil) */
+            grid-template-columns: 1fr;
             gap: 25px;
             max-width: 1200px;
             margin: auto;
+        }
+
+        /* Responsive: 2 columnas solo en pantallas grandes (PC) */
+        @media (min-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr 1.5fr;
+            }
         }
 
         .card {
@@ -63,13 +71,14 @@
 
         label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #888; }
 
-        input {
+        input, select {
             width: 100%;
             padding: 12px;
             background: #1a1a1a;
             border: 1px solid #333;
             color: white;
             box-sizing: border-box;
+            font-family: inherit;
         }
 
         button {
@@ -82,14 +91,20 @@
             cursor: pointer;
             text-transform: uppercase;
             transition: 0.3s;
+            margin-top: 10px;
         }
 
-        button:hover { background: #e2bd75; }
+        button:hover { background: #e2bd75; opacity: 0.9; }
+
+        .table-container {
+            overflow-x: auto; /* Para que la tabla no rompa el diseño en móviles */
+        }
 
         table {
             width: 100%;
             border-collapse: collapse;
             font-size: 0.9rem;
+            min-width: 400px;
         }
 
         th { border-bottom: 1px solid var(--gold); padding: 12px; text-align: left; color: var(--gold); }
@@ -118,7 +133,7 @@
         </div>
         <div class="form-group">
             <label>Acción</label>
-            <select id="accion" style="width:100%; padding:12px; background:#1a1a1a; color:white; border:1px solid #333;">
+            <select id="accion">
                 <option value="entrada">Entra al Almacén (+)</option>
                 <option value="salida">Sale a Barra (-)</option>
             </select>
@@ -127,22 +142,24 @@
     </div>
 
     <div class="card">
-        <h2>Inventario al Cierre del Día</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Producto</th>
-                    <th>Entradas</th>
-                    <th>Salidas</th>
-                    <th>Stock Final</th>
-                </tr>
-            </thead>
-            <tbody id="tablaBody">
+        <h2>Inventario al Cierre</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Entradas</th>
+                        <th>Salidas</th>
+                        <th>Stock Final</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaBody">
                 </tbody>
-        </table>
+            </table>
+        </div>
         <br>
         <button style="background:transparent; border:1px solid var(--gold); color:var(--gold);" onclick="exportarCSV()">
-            Corte Mensual (Excel)
+            Exportar Corte (CSV)
         </button>
     </div>
 </div>
@@ -151,22 +168,32 @@
     let inventario = {};
 
     function registrar() {
-        const prod = document.getElementById('prod').value.toUpperCase();
-        const cant = parseInt(document.getElementById('cant').value);
+        const prodInput = document.getElementById('prod');
+        const cantInput = document.getElementById('cant');
+        const prod = prodInput.value.trim().toUpperCase();
+        const cant = parseInt(cantInput.value);
         const accion = document.getElementById('accion').value;
 
-        if(!prod || !cant) return alert("Complete los datos");
+        if(!prod || isNaN(cant) || cant <= 0) {
+            return alert("Por favor, ingrese un producto y una cantidad válida.");
+        }
 
         if(!inventario[prod]) {
             inventario[prod] = { entradas: 0, salidas: 0 };
         }
 
-        if(accion === 'entrada') inventario[prod].entradas += cant;
-        else inventario[prod].salidas += cant;
+        if(accion === 'entrada') {
+            inventario[prod].entradas += cant;
+        } else {
+            inventario[prod].salidas += cant;
+        }
 
         renderTabla();
-        document.getElementById('prod').value = "";
-        document.getElementById('cant').value = "";
+        
+        // Limpiar campos
+        prodInput.value = "";
+        cantInput.value = "";
+        prodInput.focus();
     }
 
     function renderTabla() {
@@ -175,31 +202,50 @@
         
         for (let p in inventario) {
             let total = inventario[p].entradas - inventario[p].salidas;
-            body.innerHTML += `
-                <tr>
-                    <td>${p}</td>
-                    <td>${inventario[p].entradas}</td>
-                    <td>${inventario[p].salidas}</td>
-                    <td class="stock-final">${total}</td>
-                </tr>
+            let fila = document.createElement('tr');
+            fila.innerHTML = `
+                <td>${p}</td>
+                <td>${inventario[p].entradas}</td>
+                <td>${inventario[p].salidas}</td>
+                <td class="stock-final">${total}</td>
             `;
+            body.appendChild(fila);
         }
     }
 
     function exportarCSV() {
+        if (Object.keys(inventario).length === 0) return alert("No hay datos para exportar");
+
         let csv = "Producto,Entradas,Salidas,Stock Final\n";
         for (let p in inventario) {
             let total = inventario[p].entradas - inventario[p].salidas;
+            // Corregido: Uso de template strings (backticks) correctamente
             csv += ${p},${inventario[p].entradas},${inventario[p].salidas},${total}\n;
         }
-        const blob = new Blob([csv], { type: 'text/csv' });
+        
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.setAttribute('href', url);
         a.setAttribute('download', 'Cierre_Almacen_Tenerias.csv');
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
     }
 </script>
 
 </body>
 </html>
+
+  
+        
+          
+      
+           
+
+    
+        
+      
+   
+          
+       
